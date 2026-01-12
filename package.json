@@ -1,0 +1,49 @@
+{
+  "name": "testmaker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:init": "ts-node -r tsconfig-paths/register --project tsconfig.scripts.json scripts/init-db.ts",
+    "test": "echo \"Error: Please specify a test framework. Use: npm run test:playwright, npm run test:jest, npm run test:mocha, npm run test:vitest, or npm run test:selenium\" && exit 1",
+    "test:playwright": "playwright test",
+    "test:jest": "jest",
+    "test:mocha": "mocha --timeout 10000 tests/**/*.test.js",
+    "test:selenium": "mocha --timeout 30000 --require ts-node/register --extensions ts,js 'tests/**/*.test.{ts,js}'",
+    "test:vitest": "vitest",
+    "test:cypress": "cypress run"
+  },
+  "dependencies": {
+    "@auth/pg-adapter": "^1.11.1",
+    "@types/pg": "^8.16.0",
+    "dotenv": "^17.2.3",
+    "next": "^14.0.0",
+    "next-auth": "^5.0.0-beta.30",
+    "openai": "^4.20.0",
+    "pg": "^8.16.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "selenium-webdriver": "^4.39.0"
+  },
+  "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.19.27",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/selenium-webdriver": "^4.35.4",
+    "autoprefixer": "^10.4.0",
+    "chai": "^6.2.2",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0",
+    "mocha": "^11.7.5",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.3.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.0.0"
+  }
+}

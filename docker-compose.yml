@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DOCKER_BUILD=true
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://testmaker:password@db:5432/testmaker
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-this-secret}
+      - NODE_ENV=production
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - testmaker-network
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=testmaker
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=testmaker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testmaker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - testmaker-network
+
+volumes:
+  postgres_data:
+
+networks:
+  testmaker-network:
+    driver: bridge
