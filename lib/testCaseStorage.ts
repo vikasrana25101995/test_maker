@@ -12,6 +12,7 @@ export interface SavedTestCase {
   redirectPageUrl: string
   baseUrl?: string
   tags?: string[]
+  type?: 'WEB' | 'API'
   createdAt: string
   updatedAt: string
 }
@@ -108,7 +109,7 @@ export const testCaseStorage = {
         if (response.status === 404) return false
         throw new Error(`Failed to delete test case: ${response.statusText}`)
       }
-    return true
+      return true
     } catch (error) {
       console.error('Error deleting test case:', error)
       return false

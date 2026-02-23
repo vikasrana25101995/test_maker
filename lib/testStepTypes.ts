@@ -1,11 +1,15 @@
 export interface TestStep {
   id: string
-  type: 'navigate' | 'click' | 'fill' | 'wait' | 'waitForPageLoad' | 'verifyElement' | 'assert' | 'custom'
+  type: 'navigate' | 'click' | 'fill' | 'wait' | 'waitForPageLoad' | 'verifyElement' | 'assert' | 'custom' | 'api_call'
   url?: string
   selector?: string
   value?: string
   action?: string
   description: string
+  method?: string
+  headers?: string
+  body?: string
+  expectedStatus?: string
 }
 
 export const stepTemplates = {
@@ -49,16 +53,21 @@ export const stepTemplates = {
     description: 'Custom code',
     placeholder: 'await page.waitForLoadState("networkidle")',
   },
+  api_call: {
+    type: 'api_call' as const,
+    description: 'Make API Call',
+    placeholder: 'GET https://api.example.com',
+  },
 }
 
 export function generateStepCode(step: TestStep, framework: string, language: string = 'typescript', stepIndex?: number, baseUrl?: string): string {
   const indent = '      '
   // Generate unique variable name for verifyElement steps to avoid duplicate declarations
   // Use stepIndex if provided, otherwise use a hash of step ID or timestamp
-  const elementVarName = stepIndex !== undefined 
-    ? `element${stepIndex}` 
+  const elementVarName = stepIndex !== undefined
+    ? `element${stepIndex}`
     : `element${step.id ? step.id.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8) : Math.random().toString(36).substring(2, 10)}`
-  
+
   // Helper to get full URL
   const getFullUrl = (url: string): string => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -70,41 +79,65 @@ export function generateStepCode(step: TestStep, framework: string, language: st
     const cleanUrl = url.startsWith('/') ? url : `/${url}`
     return `${cleanBase}${cleanUrl}`
   }
-  
+
+  if (step.type === 'api_call') {
+    const method = step.method || 'GET'
+    const url = step.url || ''
+    const headers = step.headers ? JSON.parse(step.headers) : {}
+    const body = step.body ? JSON.parse(step.body) : null
+    const expectedStatus = step.expectedStatus || '200'
+
+    if (framework === 'jest') {
+      const dbIndent = '    '
+      let code = `${dbIndent}const response = await fetch('${url}', {\n`
+      code += `${dbIndent}  method: '${method}',\n`
+      if (Object.keys(headers).length > 0) {
+        code += `${dbIndent}  headers: ${JSON.stringify(headers)},\n`
+      }
+      if (body) {
+        code += `${dbIndent}  body: JSON.stringify(${JSON.stringify(body)}),\n`
+      }
+      code += `${dbIndent}})\n`
+      code += `${dbIndent}expect(response.status).toBe(${expectedStatus})`
+      return code
+    }
+    return `// API Call: ${method} ${url}`
+  }
+
   if (framework === 'selenium') {
     if (language === 'typescript') {
       if (step.type === 'navigate' && step.url) {
         const fullUrl = getFullUrl(step.url)
         return `${indent}await driver.get('${fullUrl}')`
       } else if (step.type === 'click' && step.selector) {
-        const byMethod = step.selector.startsWith('#') 
+        const byMethod = step.selector.startsWith('#')
           ? `By.id('${step.selector.substring(1)}')`
           : step.selector.startsWith('.')
-          ? `By.className('${step.selector.substring(1)}')`
-          : `By.css('${step.selector}')`
+            ? `By.className('${step.selector.substring(1)}')`
+            : `By.css('${step.selector}')`
         return `${indent}await driver.findElement(${byMethod}).click()`
       } else if (step.type === 'fill' && step.selector && step.value) {
-        const byMethod = step.selector.startsWith('#') 
+        const byMethod = step.selector.startsWith('#')
           ? `By.id('${step.selector.substring(1)}')`
           : step.selector.startsWith('.')
-          ? `By.className('${step.selector.substring(1)}')`
-          : `By.css('${step.selector}')`
+            ? `By.className('${step.selector.substring(1)}')`
+            : `By.css('${step.selector}')`
         return `${indent}await driver.findElement(${byMethod}).sendKeys('${step.value}')`
       } else if (step.type === 'wait' && step.selector) {
-        const byMethod = step.selector.startsWith('#') 
+        const byMethod = step.selector.startsWith('#')
           ? `By.id('${step.selector.substring(1)}')`
           : step.selector.startsWith('.')
-          ? `By.className('${step.selector.substring(1)}')`
-          : `By.css('${step.selector}')`
+            ? `By.className('${step.selector.substring(1)}')`
+            : `By.css('${step.selector}')`
         return `${indent}await driver.wait(until.elementLocated(${byMethod}), 10000)`
       } else if (step.type === 'waitForPageLoad') {
         return `${indent}await driver.wait(async () => await driver.executeScript('return document.readyState') === 'complete', 10000)`
       } else if (step.type === 'verifyElement' && step.selector) {
-        const byMethod = step.selector.startsWith('#') 
+        const byMethod = step.selector.startsWith('#')
           ? `By.id('${step.selector.substring(1)}')`
           : step.selector.startsWith('.')
-          ? `By.className('${step.selector.substring(1)}')`
-          : `By.css('${step.selector}')`
+            ? `By.className('${step.selector.substring(1)}')`
+            : `By.css('${step.selector}')`
         return `${indent}const ${elementVarName} = await driver.findElement(${byMethod})\n${indent}expect(await ${elementVarName}.isDisplayed()).to.be.true`
       } else if (step.type === 'assert' && (step.action || step.description)) {
         const condition = step.action || step.description
@@ -119,34 +152,34 @@ export function generateStepCode(step: TestStep, framework: string, language: st
         const fullUrl = getFullUrl(step.url)
         return `${indent}await driver.get('${fullUrl}')`
       } else if (step.type === 'click' && step.selector) {
-        const byMethod = step.selector.startsWith('#') 
+        const byMethod = step.selector.startsWith('#')
           ? `By.id('${step.selector.substring(1)}')`
           : step.selector.startsWith('.')
-          ? `By.className('${step.selector.substring(1)}')`
-          : `By.css('${step.selector}')`
+            ? `By.className('${step.selector.substring(1)}')`
+            : `By.css('${step.selector}')`
         return `${indent}await driver.findElement(${byMethod}).click()`
       } else if (step.type === 'fill' && step.selector && step.value) {
-        const byMethod = step.selector.startsWith('#') 
+        const byMethod = step.selector.startsWith('#')
           ? `By.id('${step.selector.substring(1)}')`
           : step.selector.startsWith('.')
-          ? `By.className('${step.selector.substring(1)}')`
-          : `By.css('${step.selector}')`
+            ? `By.className('${step.selector.substring(1)}')`
+            : `By.css('${step.selector}')`
         return `${indent}await driver.findElement(${byMethod}).sendKeys('${step.value}')`
       } else if (step.type === 'wait' && step.selector) {
-        const byMethod = step.selector.startsWith('#') 
+        const byMethod = step.selector.startsWith('#')
           ? `By.id('${step.selector.substring(1)}')`
           : step.selector.startsWith('.')
-          ? `By.className('${step.selector.substring(1)}')`
-          : `By.css('${step.selector}')`
+            ? `By.className('${step.selector.substring(1)}')`
+            : `By.css('${step.selector}')`
         return `${indent}await driver.wait(until.elementLocated(${byMethod}), 10000)`
       } else if (step.type === 'waitForPageLoad') {
         return `${indent}await driver.wait(async () => await driver.executeScript('return document.readyState') === 'complete', 10000)`
       } else if (step.type === 'verifyElement' && step.selector) {
-        const byMethod = step.selector.startsWith('#') 
+        const byMethod = step.selector.startsWith('#')
           ? `By.id('${step.selector.substring(1)}')`
           : step.selector.startsWith('.')
-          ? `By.className('${step.selector.substring(1)}')`
-          : `By.css('${step.selector}')`
+            ? `By.className('${step.selector.substring(1)}')`
+            : `By.css('${step.selector}')`
         return `${indent}const ${elementVarName} = await driver.findElement(${byMethod})\n${indent}expect(await ${elementVarName}.isDisplayed()).to.be.true`
       } else if (step.type === 'assert' && (step.action || step.description)) {
         const condition = step.action || step.description
@@ -200,7 +233,7 @@ export function generateStepCode(step: TestStep, framework: string, language: st
       return `${indent}${code}`
     }
   }
-  
+
   return `${indent}// ${step.description}`
 }
 

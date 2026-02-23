@@ -12,17 +12,17 @@ export function generateTestCode(
 ): string {
   const steps = testCase.steps.map(step => `    ${step}`).join('\n')
   const needsE2E = ['playwright', 'selenium', 'cypress'].includes(framework)
-  
+
   // Helper function to safely format expectedResult
   // If it looks like a valid expression, use it; otherwise use a placeholder
   const formatExpectedResult = (expectedResult: string): string => {
     if (!expectedResult || expectedResult.trim() === '') {
       return 'true'
     }
-    
+
     // Check if it's already a valid expression (starts with common patterns)
     const trimmed = expectedResult.trim()
-    const isValidExpression = 
+    const isValidExpression =
       trimmed.startsWith('true') ||
       trimmed.startsWith('false') ||
       trimmed.startsWith('page.') ||
@@ -32,15 +32,15 @@ export function generateTestCode(
       trimmed.startsWith('expect(') ||
       trimmed.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*[!=<>]/) || // variable comparison
       trimmed.match(/^['"`]/) // string literal
-    
+
     if (isValidExpression) {
       return trimmed
     }
-    
+
     // If it's descriptive text, use a placeholder
     return 'true'
   }
-  
+
   const safeExpectedResult = formatExpectedResult(testCase.expectedResult)
 
   if (language === 'python') {
@@ -123,7 +123,7 @@ ${steps}
           .replace(/'/g, "\\'")
           .substring(0, 200)
         const cleanName = testCase.name.replace(/'/g, "\\'")
-        
+
         return `import { Builder, By, until } from 'selenium-webdriver'
 import { expect } from 'chai'
 
@@ -166,10 +166,13 @@ ${steps}
 })`
     } else if (framework === 'jest') {
       return `describe('${testCase.name}', () => {
-  it('${testCase.description}', () => {
+  it('${testCase.description}', async () => {
 ${steps}
     // Expected: ${testCase.expectedResult}
-    expect(${safeExpectedResult}).toBe(true)
+    // Note: assertions are handled within steps for API calls
+    if ('${testCase.expectedResult}' && '${testCase.expectedResult}' !== 'true') {
+       expect(${safeExpectedResult}).toBe(true)
+    }
   })
 })`
     } else if (framework === 'mocha') {

@@ -3,6 +3,7 @@ import { getPool, initDatabase } from '@/lib/db'
 import { generateTestCode } from '@/lib/testCodeGenerator'
 import { generateStepCode, TestStep } from '@/lib/testStepTypes'
 import { SavedTestCase } from '@/lib/testCaseStorage'
+import { auth } from '@/auth'
 
 // Initialize database on first request
 let dbInitialized = false
@@ -26,7 +27,7 @@ function generateTestFileContent(
 ): string {
   // Check if steps contain structured steps (first step is JSON string)
   let stepCodes: string[] = []
-  
+
   if (steps && steps.length > 0) {
     const firstStep = steps[0]
     // Check if first step is a JSON string containing structured steps
@@ -34,7 +35,7 @@ function generateTestFileContent(
       try {
         const structuredSteps: TestStep[] = JSON.parse(firstStep)
         // Generate code for each structured step
-        stepCodes = structuredSteps.map((step, index) => 
+        stepCodes = structuredSteps.map((step, index) =>
           generateStepCode(step, framework, language, index, baseUrl)
         )
       } catch {
@@ -101,6 +102,13 @@ function generateTestFileContent(
 export async function GET(request: NextRequest) {
   try {
     await ensureDbInitialized()
+
+    // Check authentication
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const pool = getPool()
     const result = await pool.query(`
       SELECT 
@@ -118,20 +126,22 @@ export async function GET(request: NextRequest) {
         base_url as "baseUrl",
         tags,
         generated_code as "generatedCode",
+        type,
         created_at as "createdAt",
         updated_at as "updatedAt"
       FROM test_cases
+      WHERE user_id = $1
       ORDER BY created_at DESC
-    `)
+    `, [session.user.id])
 
     return NextResponse.json(result.rows)
   } catch (error) {
     console.error('Error fetching test cases:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    const errorDetails = errorMessage.includes('DATABASE_URL') 
+    const errorDetails = errorMessage.includes('DATABASE_URL')
       ? 'Database connection not configured. Please set DATABASE_URL in .env.local'
       : errorMessage
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch test cases', details: errorDetails },
       { status: 500 }
@@ -143,6 +153,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await ensureDbInitialized()
+
+    // Check authentication
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const pool = getPool()
     const body = await request.json()
 
@@ -159,6 +176,7 @@ export async function POST(request: NextRequest) {
       redirectPageUrl,
       baseUrl,
       tags = [],
+      type = 'WEB',
     } = body
 
     // Generate ID
@@ -181,9 +199,9 @@ export async function POST(request: NextRequest) {
       INSERT INTO test_cases (
         id, name, description, steps, expected_result, framework, language,
         statement, requires_login, target_page_url, redirect_page_url, base_url, tags,
-        generated_code, created_at, updated_at
+        generated_code, created_at, updated_at, user_id, type
       )
-      VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16)
+      VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, $17, $18)
       RETURNING 
         id,
         name,
@@ -200,7 +218,8 @@ export async function POST(request: NextRequest) {
         tags,
         generated_code as "generatedCode",
         created_at as "createdAt",
-        updated_at as "updatedAt"
+        updated_at as "updatedAt",
+        type
       `,
       [
         id,
@@ -219,6 +238,8 @@ export async function POST(request: NextRequest) {
         generatedCode,
         now,
         now,
+        session.user.id,
+        type
       ]
     )
 

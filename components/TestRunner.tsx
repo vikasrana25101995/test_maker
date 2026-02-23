@@ -32,8 +32,8 @@ export default function TestRunner({
         language === "python"
           ? "pytest tests/ -v"
           : language === "java"
-          ? "mvn test"
-          : "npm run test:selenium",
+            ? "mvn test"
+            : "npm run test:selenium",
       cypress: "npx cypress run",
       jest: "npm run test:jest",
       mocha: "npm run test:mocha",
@@ -139,9 +139,8 @@ ${getRunCommand()}`;
     const allTests = testCases
       .map((tc, index) => {
         const code = generateTestCode(tc, selectedFramework, language);
-        return `// Test Case ${index + 1}: ${tc.name}\n// ${
-          tc.description
-        }\n\n${code}\n\n`;
+        return `// Test Case ${index + 1}: ${tc.name}\n// ${tc.description
+          }\n\n${code}\n\n`;
       })
       .join("\n");
 

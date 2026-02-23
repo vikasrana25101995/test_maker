@@ -20,7 +20,7 @@ export function getPool(): Pool {
 // Initialize database schema
 export async function initDatabase() {
   const pool = getPool()
-  
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS test_cases (
       id VARCHAR(255) PRIMARY KEY,
@@ -46,7 +46,7 @@ export async function initDatabase() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_test_cases_created_at ON test_cases(created_at DESC)
   `)
-  
+
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_test_cases_framework ON test_cases(framework)
   `)
@@ -86,13 +86,104 @@ export async function initDatabase() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_test_executions_test_case_id ON test_executions(test_case_id)
   `)
-  
+
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_test_executions_started_at ON test_executions(started_at DESC)
   `)
-  
+
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_test_executions_status ON test_executions(status)
+  `)
+
+  // --- NextAuth Tables ---
+
+  // Users table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      name VARCHAR(255),
+      email VARCHAR(255) UNIQUE,
+      emailVerified TIMESTAMP WITH TIME ZONE,
+      image TEXT,
+      password TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )
+  `)
+
+  // Accounts table (for OAuth providers if needed later, but good to have)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS accounts (
+      id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      userId VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type VARCHAR(255) NOT NULL,
+      provider VARCHAR(255) NOT NULL,
+      providerAccountId VARCHAR(255) NOT NULL,
+      refresh_token TEXT,
+      access_token TEXT,
+      expires_at BIGINT,
+      token_type VARCHAR(255),
+      scope TEXT,
+      id_token TEXT,
+      session_state TEXT,
+      
+      UNIQUE(provider, providerAccountId)
+    )
+  `)
+
+  // Sessions table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      sessionToken VARCHAR(255) UNIQUE NOT NULL,
+      userId VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires TIMESTAMP WITH TIME ZONE NOT NULL
+    )
+  `)
+
+  // Verification Tokens table (for passwordless/email magic links)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS verification_tokens (
+      identifier VARCHAR(255) NOT NULL,
+      token VARCHAR(255) NOT NULL,
+      expires TIMESTAMP WITH TIME ZONE NOT NULL,
+      
+      UNIQUE(identifier, token)
+    )
+  `)
+
+  // Add user_id column to test_cases if it doesn't exist
+  await pool.query(`
+    DO $$ 
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'test_cases' AND column_name = 'user_id'
+      ) THEN
+        ALTER TABLE test_cases ADD COLUMN user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE;
+      END IF;
+    END $$;
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_test_cases_user_id ON test_cases(user_id)
+  `)
+
+  // Add type column to test_cases if it doesn't exist (WEB or API)
+  await pool.query(`
+    DO $$ 
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'test_cases' AND column_name = 'type'
+      ) THEN
+        ALTER TABLE test_cases ADD COLUMN type VARCHAR(50) DEFAULT 'WEB';
+      END IF;
+    END $$;
+  `)
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_test_cases_type ON test_cases(type)
   `)
 }
 
