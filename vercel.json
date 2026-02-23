@@ -3,11 +3,5 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "OPENAI_API_KEY": "@openai_api_key",
-    "NEXTAUTH_URL": "@nextauth_url",
-    "NEXTAUTH_SECRET": "@nextauth_secret"
-  }
+  "regions": ["iad1"]
 }
