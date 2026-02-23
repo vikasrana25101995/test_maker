@@ -4,18 +4,16 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "db:init": "ts-node -r tsconfig-paths/register --project tsconfig.scripts.json scripts/init-db.ts",
-    "test": "echo \"Error: Please specify a test framework. Use: npm run test:playwright, npm run test:jest, npm run test:mocha, npm run test:vitest, or npm run test:selenium\" && exit 1",
-    "test:playwright": "playwright test",
-    "test:jest": "jest",
-    "test:mocha": "mocha --timeout 10000 tests/**/*.test.js",
-    "test:selenium": "mocha --timeout 30000 --require ts-node/register --extensions ts,js 'tests/**/*.test.{ts,js}'",
-    "test:vitest": "vitest",
-    "test:cypress": "cypress run"
-  }
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint",
+  "db:init": "ts-node -r tsconfig-paths/register --project tsconfig.scripts.json scripts/init-db.ts",
+  "test": "echo \"Error: Please specify a test framework. Use: npm run test:playwright, npm run test:jest, npm run test:mocha, npm run test:vitest, or npm run test:selenium\" && exit 1",
+  "test:playwright": "playwright test",
+  "test:jest": "jest",
+  "test:mocha": "mocha --timeout 10000 tests/**/*.test.js",
+  "test:selenium": "mocha --timeout 30000 --require ts-node/register --extensions ts,js 'tests/**/*.test.{ts,js}'",
+  "test:vitest": "vitest",
+  "test:cypress": "cypress run"
 }
