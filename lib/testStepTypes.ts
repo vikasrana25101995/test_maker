@@ -67,6 +67,7 @@ export function generateStepCode(step: TestStep, framework: string, language: st
   const elementVarName = stepIndex !== undefined
     ? `element${stepIndex}`
     : `element${step.id ? step.id.replace(/[^a-zA-Z0-9]/g, '').substring(0, 8) : Math.random().toString(36).substring(2, 10)}`
+  const clickElVarName = stepIndex !== undefined ? `clickEl${stepIndex}` : 'clickEl'
 
   // Helper to get full URL
   const getFullUrl = (url: string): string => {
@@ -115,7 +116,7 @@ export function generateStepCode(step: TestStep, framework: string, language: st
           : step.selector.startsWith('.')
             ? `By.className('${step.selector.substring(1)}')`
             : `By.css('${step.selector}')`
-        return `${indent}await driver.findElement(${byMethod}).click()`
+        return `${indent}await driver.wait(until.elementLocated(${byMethod}), 10000)\n${indent}const ${clickElVarName} = await driver.findElement(${byMethod})\n${indent}await driver.executeScript('arguments[0].scrollIntoView({ block: "center" })', ${clickElVarName})\n${indent}await driver.executeScript('arguments[0].click()', ${clickElVarName})`
       } else if (step.type === 'fill' && step.selector && step.value) {
         const byMethod = step.selector.startsWith('#')
           ? `By.id('${step.selector.substring(1)}')`
@@ -157,7 +158,7 @@ export function generateStepCode(step: TestStep, framework: string, language: st
           : step.selector.startsWith('.')
             ? `By.className('${step.selector.substring(1)}')`
             : `By.css('${step.selector}')`
-        return `${indent}await driver.findElement(${byMethod}).click()`
+        return `${indent}await driver.wait(until.elementLocated(${byMethod}), 10000)\n${indent}const ${clickElVarName} = await driver.findElement(${byMethod})\n${indent}await driver.executeScript('arguments[0].scrollIntoView({ block: "center" })', ${clickElVarName})\n${indent}await driver.executeScript('arguments[0].click()', ${clickElVarName})`
       } else if (step.type === 'fill' && step.selector && step.value) {
         const byMethod = step.selector.startsWith('#')
           ? `By.id('${step.selector.substring(1)}')`
